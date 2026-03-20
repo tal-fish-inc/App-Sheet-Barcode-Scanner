@@ -12,16 +12,56 @@
       background: #1a1a2e;
       color: #eee;
       min-height: 100vh;
+    }
+
+    /* === HEADER === */
+    .app-header {
+      background: #0f3460;
+      padding: 12px 1.5rem;
       display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 12px;
+      border-bottom: 1px solid #1a4a7a;
     }
+    .app-header svg { height: 28px; width: auto; }
+    .app-header .nav-links { margin-left: auto; display: flex; gap: 1rem; }
+    .app-header .nav-links a {
+      color: #00d4aa;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .app-header .nav-links a:hover { text-decoration: underline; }
+
     .container {
       text-align: center;
-      padding: 2rem;
+      padding: 3rem 2rem;
     }
     h1 { font-size: 2rem; margin-bottom: 0.5rem; color: #00d4aa; }
-    p { font-size: 1.1rem; color: #aaa; margin-bottom: 1rem; }
+    p { font-size: 1.1rem; color: #aaa; margin-bottom: 1.5rem; }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+      max-width: 900px;
+      margin: 0 auto 2rem;
+    }
+    .card {
+      background: #16213e;
+      border: 1px solid #1a4a7a;
+      border-radius: 10px;
+      padding: 1.5rem;
+      text-align: left;
+      text-decoration: none;
+      color: #eee;
+      transition: all 0.2s;
+      display: block;
+    }
+    .card:hover { border-color: #00d4aa; transform: translateY(-2px); }
+    .card h3 { color: #00d4aa; font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .card p { font-size: 0.85rem; color: #888; margin: 0; }
+
     .status {
       display: inline-block;
       background: #16213e;
@@ -35,9 +75,47 @@
   </style>
 </head>
 <body>
+
+  <!-- Headwaters header -->
+  <div class="app-header">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 56">
+      <path d="M0 2 L13 2 L13 35 L27 17 L41 35 L41 2 L54 2 L54 54 L41 54 L27 34 L13 54 L0 54 Z" fill="#00d4aa"/>
+      <path d="M76 8 L85 8 L85 27 L103 27 L103 8 L112 8 L112 50 L103 50 L103 36 L85 36 L85 50 L76 50 Z" fill="#fff"/>
+      <path d="M124 8 L153 8 L153 16 L133 16 L133 25 L150 25 L150 33 L133 33 L133 42 L154 42 L154 50 L124 50 Z" fill="#fff"/>
+      <path d="M161 50 L174 8 L189 8 L202 50 L192 50 L189 41 L174 41 L171 50 Z M177 33 L186 33 L181 16 Z" fill="#fff"/>
+      <path d="M210 8 L230 8 Q245 8 245 29 Q245 50 230 50 L210 50 Z M219 16 L219 42 L228 42 Q236 42 236 29 Q236 16 228 16 Z" fill="#fff"/>
+      <path d="M256 8 L265 8 L271 36 L279 8 L288 8 L296 36 L302 8 L311 8 L299 50 L290 50 L283 26 L276 50 L267 50 Z" fill="#fff"/>
+      <path d="M317 50 L330 8 L345 8 L358 50 L348 50 L345 41 L330 41 L327 50 Z M333 33 L342 33 L337 16 Z" fill="#fff"/>
+      <path d="M366 8 L398 8 L398 16 L387 16 L387 50 L377 50 L377 16 L366 16 Z" fill="#fff"/>
+      <path d="M406 8 L435 8 L435 16 L415 16 L415 25 L432 25 L432 33 L415 33 L415 42 L436 42 L436 50 L406 50 Z" fill="#fff"/>
+      <path d="M444 8 L468 8 Q477 8 477 20 Q477 29 470 31 L479 50 L469 50 L461 33 L453 33 L453 50 L444 50 Z M453 16 L453 26 L465 26 Q468 26 468 21 Q468 16 465 16 Z" fill="#fff"/>
+      <path d="M487 8 L515 8 L515 16 L497 16 Q496 16 496 19 L496 22 Q496 25 498 25 L507 25 Q515 25 515 34 L515 42 Q515 50 507 50 L487 50 L487 42 L505 42 Q507 42 507 39 L507 36 Q507 34 505 34 L496 34 Q487 34 487 25 L487 17 Z" fill="#fff"/>
+    </svg>
+    <div class="nav-links">
+      <a href="<?= ScriptApp.getService().getUrl() ?>">Dashboard</a>
+      <a href="<?= ScriptApp.getService().getUrl() ?>?page=LabelGenerator">Labels</a>
+    </div>
+  </div>
+
   <div class="container">
     <h1>Cannabis Packaging Inventory</h1>
     <p>Barcode Scanner Web App</p>
+
+    <div class="card-grid">
+      <a class="card" href="<?= ScriptApp.getService().getUrl() ?>?page=LabelGenerator">
+        <h3>QR Label Generator</h3>
+        <p>Generate unique QR code labels for packaging SKUs. Search, filter, and print label sheets.</p>
+      </a>
+      <div class="card">
+        <h3>Scanner (Coming Soon)</h3>
+        <p>Scan QR codes for intake, physical counts, and return-to-stock. Phase 2.</p>
+      </div>
+      <div class="card">
+        <h3>Dashboard (Coming Soon)</h3>
+        <p>Inventory value, top SKUs, and low stock alerts. Phase 4.</p>
+      </div>
+    </div>
+
     <div class="status">
       <span>Phase 1 Complete</span> — Backend Connected
     </div>
@@ -45,14 +123,13 @@
   </div>
 
   <script>
-    // Test backend connectivity on load
     google.script.run
       .withSuccessHandler(function(result) {
         document.getElementById('test-result').textContent =
-          result ? '✅ Database connected successfully' : '❌ Database connection failed';
+          result ? 'Database connected successfully' : 'Database connection failed';
       })
       .withFailureHandler(function(error) {
-        document.getElementById('test-result').textContent = '❌ Error: ' + error.message;
+        document.getElementById('test-result').textContent = 'Error: ' + error.message;
       })
       .testDatabaseConnection();
   </script>
