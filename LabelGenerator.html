@@ -5,7 +5,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>QR Label Generator</title>
-  <!-- QR Code library -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -71,16 +70,10 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    .btn-primary {
-      background: #00d4aa;
-      color: #1a1a2e;
-    }
+    .btn-primary { background: #00d4aa; color: #1a1a2e; }
     .btn-primary:hover { background: #00f5c4; }
     .btn-primary:disabled { background: #444; color: #888; cursor: not-allowed; }
-    .btn-print {
-      background: #e94560;
-      color: white;
-    }
+    .btn-print { background: #e94560; color: white; }
     .btn-print:hover { background: #ff6b81; }
 
     .status-bar {
@@ -95,9 +88,7 @@
     .status-bar.error { color: #e94560; border-left: 3px solid #e94560; }
 
     /* === LABEL PREVIEW === */
-    .preview-area {
-      padding: 1.5rem;
-    }
+    .preview-area { padding: 1.5rem; }
     .preview-area h2 {
       font-size: 1.2rem;
       color: #aaa;
@@ -105,51 +96,68 @@
     }
     .label-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
       gap: 1rem;
     }
 
+    /* ======================================================
+       LABEL CARD — Clean layout:
+         [Headwaters Logo]
+         [Item Name]
+         [Units Per Case]
+         [QR Code]
+         [Serial (small)]
+       ====================================================== */
     .label-card {
       background: white;
       color: #111;
-      border-radius: 8px;
-      padding: 1rem;
+      border: 1.5px solid #222;
+      border-radius: 6px;
+      padding: 14px;
       display: flex;
-      gap: 0.8rem;
+      flex-direction: column;
       align-items: center;
+      text-align: center;
       page-break-inside: avoid;
     }
-    .label-qr {
-      flex-shrink: 0;
-      width: 120px;
-      height: 120px;
+
+    .label-logo {
+      height: 22px;
+      width: auto;
+      margin-bottom: 10px;
     }
-    .label-qr canvas { width: 120px !important; height: 120px !important; }
-    .label-info { flex: 1; min-width: 0; }
-    .label-sku {
-      font-size: 1rem;
+
+    .label-item-name {
+      font-size: 0.85rem;
       font-weight: 700;
       color: #111;
-      word-break: break-all;
+      line-height: 1.35;
+      margin-bottom: 4px;
+      max-width: 100%;
     }
-    .label-serial {
+
+    .label-case-size {
       font-size: 0.75rem;
-      font-family: 'Courier New', monospace;
-      color: #666;
-      margin-top: 0.2rem;
-      word-break: break-all;
-    }
-    .label-name {
-      font-size: 0.7rem;
       color: #555;
-      margin-top: 0.4rem;
-      line-height: 1.3;
+      font-weight: 600;
+      margin-bottom: 10px;
     }
-    .label-brand {
-      font-size: 0.65rem;
-      color: #888;
-      margin-top: 0.2rem;
-      text-transform: uppercase;
+
+    .label-qr {
+      width: 130px;
+      height: 130px;
+      margin-bottom: 6px;
+    }
+    .label-qr canvas {
+      width: 130px !important;
+      height: 130px !important;
+    }
+
+    .label-serial {
+      font-size: 0.55rem;
+      font-family: 'Courier New', monospace;
+      color: #aaa;
+      word-break: break-all;
     }
 
     /* === PRINT STYLES === */
@@ -159,22 +167,24 @@
       .preview-area { padding: 0; }
       .label-grid {
         grid-template-columns: repeat(3, 1fr);
-        gap: 0.5rem;
+        gap: 4px;
       }
       .label-card {
-        border: 1px solid #ccc;
-        padding: 0.5rem;
-        border-radius: 4px;
+        border: 1px solid #888;
+        border-radius: 3px;
+        padding: 8px;
       }
-      .label-qr { width: 90px; height: 90px; }
-      .label-qr canvas { width: 90px !important; height: 90px !important; }
+      .label-logo { height: 16px; margin-bottom: 6px; }
+      .label-item-name { font-size: 0.72rem; margin-bottom: 2px; }
+      .label-case-size { font-size: 0.65rem; margin-bottom: 6px; }
+      .label-qr { width: 100px; height: 100px; margin-bottom: 4px; }
+      .label-qr canvas { width: 100px !important; height: 100px !important; }
+      .label-serial { font-size: 0.5rem; }
     }
 
-    /* === LOADING === */
     .spinner {
       display: inline-block;
-      width: 20px;
-      height: 20px;
+      width: 20px; height: 20px;
       border: 2px solid #444;
       border-top-color: #00d4aa;
       border-radius: 50%;
@@ -187,8 +197,34 @@
 </head>
 <body>
 
+  <!-- Headwaters logo SVG (black) — hidden source, converted to data URI for labels -->
+  <svg id="hw-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 56" style="display:none">
+    <!-- Stylized W mark -->
+    <path d="M0 2 L13 2 L13 35 L27 17 L41 35 L41 2 L54 2 L54 54 L41 54 L27 34 L13 54 L0 54 Z" fill="#000"/>
+    <!-- H -->
+    <path d="M76 8 L85 8 L85 27 L103 27 L103 8 L112 8 L112 50 L103 50 L103 36 L85 36 L85 50 L76 50 Z" fill="#000"/>
+    <!-- E -->
+    <path d="M124 8 L153 8 L153 16 L133 16 L133 25 L150 25 L150 33 L133 33 L133 42 L154 42 L154 50 L124 50 Z" fill="#000"/>
+    <!-- A -->
+    <path d="M161 50 L174 8 L189 8 L202 50 L192 50 L189 41 L174 41 L171 50 Z M177 33 L186 33 L181 16 Z" fill="#000"/>
+    <!-- D -->
+    <path d="M210 8 L230 8 Q245 8 245 29 Q245 50 230 50 L210 50 Z M219 16 L219 42 L228 42 Q236 42 236 29 Q236 16 228 16 Z" fill="#000"/>
+    <!-- W -->
+    <path d="M256 8 L265 8 L271 36 L279 8 L288 8 L296 36 L302 8 L311 8 L299 50 L290 50 L283 26 L276 50 L267 50 Z" fill="#000"/>
+    <!-- A -->
+    <path d="M317 50 L330 8 L345 8 L358 50 L348 50 L345 41 L330 41 L327 50 Z M333 33 L342 33 L337 16 Z" fill="#000"/>
+    <!-- T -->
+    <path d="M366 8 L398 8 L398 16 L387 16 L387 50 L377 50 L377 16 L366 16 Z" fill="#000"/>
+    <!-- E -->
+    <path d="M406 8 L435 8 L435 16 L415 16 L415 25 L432 25 L432 33 L415 33 L415 42 L436 42 L436 50 L406 50 Z" fill="#000"/>
+    <!-- R -->
+    <path d="M444 8 L468 8 Q477 8 477 20 Q477 29 470 31 L479 50 L469 50 L461 33 L453 33 L453 50 L444 50 Z M453 16 L453 26 L465 26 Q468 26 468 21 Q468 16 465 16 Z" fill="#000"/>
+    <!-- S -->
+    <path d="M487 8 L515 8 L515 16 L497 16 Q496 16 496 19 L496 22 Q496 25 498 25 L507 25 Q515 25 515 34 L515 42 Q515 50 507 50 L487 50 L487 42 L505 42 Q507 42 507 39 L507 36 Q507 34 505 34 L496 34 Q487 34 487 25 L487 17 Z" fill="#000"/>
+  </svg>
+
   <div class="control-panel">
-    <h1>📦 QR Label Generator</h1>
+    <h1>QR Label Generator — Headwaters</h1>
 
     <div class="control-row">
       <div class="control-group">
@@ -198,7 +234,7 @@
       <div class="control-group">
         <label>SKU</label>
         <select id="sku-select" onchange="onSKUSelected()">
-          <option value="">— Select a SKU —</option>
+          <option value="">-- Select a SKU --</option>
         </select>
       </div>
       <div class="control-group">
@@ -209,7 +245,7 @@
         Generate Labels
       </button>
       <button class="btn btn-print no-print" id="btn-print" onclick="window.print()" style="display:none">
-        🖨️ Print Labels
+        Print Labels
       </button>
     </div>
 
@@ -237,13 +273,18 @@
   </div>
 
   <script>
-    // Global state
     let allSKUs = [];
     let filteredSKUs = [];
     let generatedSerials = [];
+    let logoDataURI = '';
 
-    // Load SKUs on page load
-    window.addEventListener('DOMContentLoaded', loadSKUs);
+    window.addEventListener('DOMContentLoaded', function() {
+      // Convert inline SVG to data URI for embedding in label cards
+      const svgEl = document.getElementById('hw-logo-svg');
+      const svgData = new XMLSerializer().serializeToString(svgEl);
+      logoDataURI = 'data:image/svg+xml;base64,' + btoa(svgData);
+      loadSKUs();
+    });
 
     function loadSKUs() {
       google.script.run
@@ -252,7 +293,7 @@
           filteredSKUs = allSKUs;
           populateFilters();
           populateSKUSelect(allSKUs);
-          setStatus('success', allSKUs.length + ' active SKUs loaded. Select a SKU and quantity to generate labels.');
+          setStatus('success', allSKUs.length + ' active SKUs loaded.');
           document.getElementById('btn-generate').disabled = false;
         })
         .withFailureHandler(function(err) {
@@ -262,7 +303,7 @@
     }
 
     function populateFilters() {
-      const brands = [...new Set(allSKUs.map(s => s.vendor_name || s.sku_name.split('|')[0].trim()))].filter(Boolean).sort();
+      const brands = [...new Set(allSKUs.map(s => (s.sku_name || '').split('|')[0].trim()))].filter(Boolean).sort();
       const categories = [...new Set(allSKUs.map(s => s.category))].filter(Boolean).sort();
 
       const brandSelect = document.getElementById('brand-filter');
@@ -282,9 +323,7 @@
 
     function populateSKUSelect(skus) {
       const select = document.getElementById('sku-select');
-      // Keep first option
       while (select.options.length > 1) select.remove(1);
-
       skus.forEach(sku => {
         const opt = document.createElement('option');
         opt.value = sku.sku_id;
@@ -299,11 +338,11 @@
       const category = document.getElementById('category-filter').value;
 
       filteredSKUs = allSKUs.filter(sku => {
+        const skuBrand = (sku.sku_name || '').split('|')[0].trim();
         const matchSearch = !search ||
           sku.sku_id.toLowerCase().includes(search) ||
           (sku.sku_name || '').toLowerCase().includes(search);
-        const matchBrand = !brand || sku.vendor_name === brand ||
-          (sku.sku_name || '').split('|')[0].trim() === brand;
+        const matchBrand = !brand || skuBrand === brand;
         const matchCat = !category || sku.category === category;
         return matchSearch && matchBrand && matchCat;
       });
@@ -317,7 +356,8 @@
       if (skuId) {
         const sku = allSKUs.find(s => s.sku_id === skuId);
         if (sku) {
-          setStatus('success', 'Selected: ' + sku.sku_name);
+          const caseInfo = sku.units_per_case ? ' | Case: ' + sku.units_per_case + ' units' : ' | Case size: not yet set';
+          setStatus('success', 'Selected: ' + sku.sku_name + caseInfo);
         }
       }
     }
@@ -326,28 +366,21 @@
       const skuId = document.getElementById('sku-select').value;
       const qty = parseInt(document.getElementById('label-qty').value) || 10;
 
-      if (!skuId) {
-        setStatus('error', 'Please select a SKU first');
-        return;
-      }
+      if (!skuId) { setStatus('error', 'Please select a SKU first'); return; }
 
       const sku = allSKUs.find(s => s.sku_id === skuId);
-      if (!sku) {
-        setStatus('error', 'SKU not found');
-        return;
-      }
+      if (!sku) { setStatus('error', 'SKU not found'); return; }
 
       setStatus('', '<span class="spinner"></span>Generating ' + qty + ' unique labels...');
       document.getElementById('btn-generate').disabled = true;
 
-      // Call backend to generate and register unique serials
       google.script.run
         .withSuccessHandler(function(serials) {
           generatedSerials = serials;
           renderLabels(sku, serials);
           document.getElementById('btn-generate').disabled = false;
           document.getElementById('btn-print').style.display = '';
-          setStatus('success', qty + ' unique QR labels generated for ' + skuId + '. Serials registered in database.');
+          setStatus('success', qty + ' unique QR labels generated for ' + skuId + '. Ready to print.');
         })
         .withFailureHandler(function(err) {
           document.getElementById('btn-generate').disabled = false;
@@ -360,37 +393,52 @@
       const grid = document.getElementById('label-grid');
       grid.innerHTML = '';
 
-      // Parse brand from description
-      const brand = (sku.sku_name || '').split('|')[0].trim();
+      const caseSize = sku.units_per_case
+        ? sku.units_per_case + ' units per case'
+        : 'Case size: TBD';
 
       serials.forEach(serial => {
         const card = document.createElement('div');
         card.className = 'label-card';
 
-        // QR container
+        // 1. LOGO
+        const logo = document.createElement('img');
+        logo.className = 'label-logo';
+        logo.src = logoDataURI;
+        logo.alt = 'Headwaters';
+
+        // 2. ITEM NAME
+        const name = document.createElement('div');
+        name.className = 'label-item-name';
+        name.textContent = sku.sku_name || sku.sku_id;
+
+        // 3. UNITS PER CASE
+        const caseDiv = document.createElement('div');
+        caseDiv.className = 'label-case-size';
+        caseDiv.textContent = caseSize;
+
+        // 4. QR CODE
         const qrDiv = document.createElement('div');
         qrDiv.className = 'label-qr';
         const qrCanvas = document.createElement('canvas');
         qrDiv.appendChild(qrCanvas);
 
-        // Generate QR code with the unique serial
         QRCode.toCanvas(qrCanvas, serial.serialCode, {
-          width: 120,
+          width: 130,
           margin: 1,
           color: { dark: '#000000', light: '#ffffff' }
         });
 
-        // Info section
-        const info = document.createElement('div');
-        info.className = 'label-info';
-        info.innerHTML =
-          '<div class="label-sku">' + escapeHtml(sku.sku_id) + '</div>' +
-          '<div class="label-serial">' + escapeHtml(serial.serialCode) + '</div>' +
-          '<div class="label-name">' + escapeHtml(sku.sku_name || '') + '</div>' +
-          '<div class="label-brand">' + escapeHtml(brand) + ' · ' + escapeHtml(sku.category || '') + '</div>';
+        // 5. SERIAL (small, for reference)
+        const serialDiv = document.createElement('div');
+        serialDiv.className = 'label-serial';
+        serialDiv.textContent = serial.serialCode;
 
+        card.appendChild(logo);
+        card.appendChild(name);
+        card.appendChild(caseDiv);
         card.appendChild(qrDiv);
-        card.appendChild(info);
+        card.appendChild(serialDiv);
         grid.appendChild(card);
       });
 
