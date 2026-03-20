@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cannabis Packaging Inventory</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; color: #00d4aa; }
+    p { font-size: 1.1rem; color: #aaa; margin-bottom: 1rem; }
+    .status {
+      display: inline-block;
+      background: #16213e;
+      border: 1px solid #00d4aa;
+      border-radius: 8px;
+      padding: 1rem 2rem;
+      margin-top: 1rem;
+    }
+    .status span { color: #00d4aa; font-weight: bold; }
+    #test-result { margin-top: 1rem; font-size: 0.9rem; color: #888; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cannabis Packaging Inventory</h1>
+    <p>Barcode Scanner Web App</p>
+    <div class="status">
+      <span>Phase 1 Complete</span> — Backend Connected
+    </div>
+    <div id="test-result">Testing database connection...</div>
+  </div>
+
+  <script>
+    // Test backend connectivity on load
+    google.script.run
+      .withSuccessHandler(function(result) {
+        document.getElementById('test-result').textContent =
+          result ? '✅ Database connected successfully' : '❌ Database connection failed';
+      })
+      .withFailureHandler(function(error) {
+        document.getElementById('test-result').textContent = '❌ Error: ' + error.message;
+      })
+      .testDatabaseConnection();
+  </script>
+</body>
+</html>
