@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(clasp create:*)",
+      "Bash(clasp login:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo:*)"
+    ]
+  }
+}
