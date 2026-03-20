@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR Label Generator</title>
+  <!-- QR Code library -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+    }
+
+    /* === CONTROL PANEL === */
+    .control-panel {
+      background: #16213e;
+      padding: 1.5rem;
+      border-bottom: 2px solid #00d4aa;
+    }
+    .control-panel h1 {
+      font-size: 1.5rem;
+      color: #00d4aa;
+      margin-bottom: 1rem;
+    }
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: end;
+      margin-bottom: 1rem;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .control-group label {
+      font-size: 0.8rem;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .control-group select,
+    .control-group input {
+      background: #0f3460;
+      border: 1px solid #444;
+      color: #eee;
+      padding: 0.6rem 0.8rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      min-width: 200px;
+    }
+    .control-group select:focus,
+    .control-group input:focus {
+      outline: none;
+      border-color: #00d4aa;
+    }
+
+    .btn {
+      padding: 0.6rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #00d4aa;
+      color: #1a1a2e;
+    }
+    .btn-primary:hover { background: #00f5c4; }
+    .btn-primary:disabled { background: #444; color: #888; cursor: not-allowed; }
+    .btn-print {
+      background: #e94560;
+      color: white;
+    }
+    .btn-print:hover { background: #ff6b81; }
+
+    .status-bar {
+      background: #0f3460;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: #aaa;
+      margin-top: 0.5rem;
+    }
+    .status-bar.success { color: #00d4aa; border-left: 3px solid #00d4aa; }
+    .status-bar.error { color: #e94560; border-left: 3px solid #e94560; }
+
+    /* === LABEL PREVIEW === */
+    .preview-area {
+      padding: 1.5rem;
+    }
+    .preview-area h2 {
+      font-size: 1.2rem;
+      color: #aaa;
+      margin-bottom: 1rem;
+    }
+    .label-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .label-card {
+      background: white;
+      color: #111;
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      gap: 0.8rem;
+      align-items: center;
+      page-break-inside: avoid;
+    }
+    .label-qr {
+      flex-shrink: 0;
+      width: 120px;
+      height: 120px;
+    }
+    .label-qr canvas { width: 120px !important; height: 120px !important; }
+    .label-info { flex: 1; min-width: 0; }
+    .label-sku {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #111;
+      word-break: break-all;
+    }
+    .label-serial {
+      font-size: 0.75rem;
+      font-family: 'Courier New', monospace;
+      color: #666;
+      margin-top: 0.2rem;
+      word-break: break-all;
+    }
+    .label-name {
+      font-size: 0.7rem;
+      color: #555;
+      margin-top: 0.4rem;
+      line-height: 1.3;
+    }
+    .label-brand {
+      font-size: 0.65rem;
+      color: #888;
+      margin-top: 0.2rem;
+      text-transform: uppercase;
+    }
+
+    /* === PRINT STYLES === */
+    @media print {
+      body { background: white; }
+      .control-panel, .preview-area h2, .no-print { display: none !important; }
+      .preview-area { padding: 0; }
+      .label-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+      }
+      .label-card {
+        border: 1px solid #ccc;
+        padding: 0.5rem;
+        border-radius: 4px;
+      }
+      .label-qr { width: 90px; height: 90px; }
+      .label-qr canvas { width: 90px !important; height: 90px !important; }
+    }
+
+    /* === LOADING === */
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #444;
+      border-top-color: #00d4aa;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="control-panel">
+    <h1>📦 QR Label Generator</h1>
+
+    <div class="control-row">
+      <div class="control-group">
+        <label>Search / Select SKU</label>
+        <input type="text" id="sku-search" placeholder="Type to search SKUs..." oninput="filterSKUs()">
+      </div>
+      <div class="control-group">
+        <label>SKU</label>
+        <select id="sku-select" onchange="onSKUSelected()">
+          <option value="">— Select a SKU —</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Quantity</label>
+        <input type="number" id="label-qty" value="10" min="1" max="5000" style="min-width:100px">
+      </div>
+      <button class="btn btn-primary" id="btn-generate" onclick="generateLabels()" disabled>
+        Generate Labels
+      </button>
+      <button class="btn btn-print no-print" id="btn-print" onclick="window.print()" style="display:none">
+        🖨️ Print Labels
+      </button>
+    </div>
+
+    <div class="control-row">
+      <div class="control-group">
+        <label>Filter by Brand</label>
+        <select id="brand-filter" onchange="filterSKUs()">
+          <option value="">All Brands</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Filter by Category</label>
+        <select id="category-filter" onchange="filterSKUs()">
+          <option value="">All Categories</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="status-bar" class="status-bar">Loading SKU data...</div>
+  </div>
+
+  <div class="preview-area">
+    <h2 id="preview-title">Label Preview</h2>
+    <div id="label-grid" class="label-grid"></div>
+  </div>
+
+  <script>
+    // Global state
+    let allSKUs = [];
+    let filteredSKUs = [];
+    let generatedSerials = [];
+
+    // Load SKUs on page load
+    window.addEventListener('DOMContentLoaded', loadSKUs);
+
+    function loadSKUs() {
+      google.script.run
+        .withSuccessHandler(function(skus) {
+          allSKUs = skus.filter(s => s.is_active !== false && s.is_active !== 'FALSE');
+          filteredSKUs = allSKUs;
+          populateFilters();
+          populateSKUSelect(allSKUs);
+          setStatus('success', allSKUs.length + ' active SKUs loaded. Select a SKU and quantity to generate labels.');
+          document.getElementById('btn-generate').disabled = false;
+        })
+        .withFailureHandler(function(err) {
+          setStatus('error', 'Failed to load SKUs: ' + err.message);
+        })
+        .getAllSKUs();
+    }
+
+    function populateFilters() {
+      const brands = [...new Set(allSKUs.map(s => s.vendor_name || s.sku_name.split('|')[0].trim()))].filter(Boolean).sort();
+      const categories = [...new Set(allSKUs.map(s => s.category))].filter(Boolean).sort();
+
+      const brandSelect = document.getElementById('brand-filter');
+      brands.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b; opt.textContent = b;
+        brandSelect.appendChild(opt);
+      });
+
+      const catSelect = document.getElementById('category-filter');
+      categories.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        catSelect.appendChild(opt);
+      });
+    }
+
+    function populateSKUSelect(skus) {
+      const select = document.getElementById('sku-select');
+      // Keep first option
+      while (select.options.length > 1) select.remove(1);
+
+      skus.forEach(sku => {
+        const opt = document.createElement('option');
+        opt.value = sku.sku_id;
+        opt.textContent = sku.sku_id + ' — ' + (sku.sku_name || '').substring(0, 60);
+        select.appendChild(opt);
+      });
+    }
+
+    function filterSKUs() {
+      const search = document.getElementById('sku-search').value.toLowerCase();
+      const brand = document.getElementById('brand-filter').value;
+      const category = document.getElementById('category-filter').value;
+
+      filteredSKUs = allSKUs.filter(sku => {
+        const matchSearch = !search ||
+          sku.sku_id.toLowerCase().includes(search) ||
+          (sku.sku_name || '').toLowerCase().includes(search);
+        const matchBrand = !brand || sku.vendor_name === brand ||
+          (sku.sku_name || '').split('|')[0].trim() === brand;
+        const matchCat = !category || sku.category === category;
+        return matchSearch && matchBrand && matchCat;
+      });
+
+      populateSKUSelect(filteredSKUs);
+      setStatus('success', filteredSKUs.length + ' SKUs matching filters');
+    }
+
+    function onSKUSelected() {
+      const skuId = document.getElementById('sku-select').value;
+      if (skuId) {
+        const sku = allSKUs.find(s => s.sku_id === skuId);
+        if (sku) {
+          setStatus('success', 'Selected: ' + sku.sku_name);
+        }
+      }
+    }
+
+    function generateLabels() {
+      const skuId = document.getElementById('sku-select').value;
+      const qty = parseInt(document.getElementById('label-qty').value) || 10;
+
+      if (!skuId) {
+        setStatus('error', 'Please select a SKU first');
+        return;
+      }
+
+      const sku = allSKUs.find(s => s.sku_id === skuId);
+      if (!sku) {
+        setStatus('error', 'SKU not found');
+        return;
+      }
+
+      setStatus('', '<span class="spinner"></span>Generating ' + qty + ' unique labels...');
+      document.getElementById('btn-generate').disabled = true;
+
+      // Call backend to generate and register unique serials
+      google.script.run
+        .withSuccessHandler(function(serials) {
+          generatedSerials = serials;
+          renderLabels(sku, serials);
+          document.getElementById('btn-generate').disabled = false;
+          document.getElementById('btn-print').style.display = '';
+          setStatus('success', qty + ' unique QR labels generated for ' + skuId + '. Serials registered in database.');
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('btn-generate').disabled = false;
+          setStatus('error', 'Generation failed: ' + err.message);
+        })
+        .generateLabelSerials(skuId, qty);
+    }
+
+    function renderLabels(sku, serials) {
+      const grid = document.getElementById('label-grid');
+      grid.innerHTML = '';
+
+      // Parse brand from description
+      const brand = (sku.sku_name || '').split('|')[0].trim();
+
+      serials.forEach(serial => {
+        const card = document.createElement('div');
+        card.className = 'label-card';
+
+        // QR container
+        const qrDiv = document.createElement('div');
+        qrDiv.className = 'label-qr';
+        const qrCanvas = document.createElement('canvas');
+        qrDiv.appendChild(qrCanvas);
+
+        // Generate QR code with the unique serial
+        QRCode.toCanvas(qrCanvas, serial.serialCode, {
+          width: 120,
+          margin: 1,
+          color: { dark: '#000000', light: '#ffffff' }
+        });
+
+        // Info section
+        const info = document.createElement('div');
+        info.className = 'label-info';
+        info.innerHTML =
+          '<div class="label-sku">' + escapeHtml(sku.sku_id) + '</div>' +
+          '<div class="label-serial">' + escapeHtml(serial.serialCode) + '</div>' +
+          '<div class="label-name">' + escapeHtml(sku.sku_name || '') + '</div>' +
+          '<div class="label-brand">' + escapeHtml(brand) + ' · ' + escapeHtml(sku.category || '') + '</div>';
+
+        card.appendChild(qrDiv);
+        card.appendChild(info);
+        grid.appendChild(card);
+      });
+
+      document.getElementById('preview-title').textContent =
+        'Label Preview — ' + serials.length + ' labels for ' + sku.sku_id;
+    }
+
+    function setStatus(type, message) {
+      const bar = document.getElementById('status-bar');
+      bar.className = 'status-bar' + (type ? ' ' + type : '');
+      bar.innerHTML = message;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+
+</body>
+</html>

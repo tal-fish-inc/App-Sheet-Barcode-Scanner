@@ -1118,7 +1118,12 @@ function checkAndAlertLowStock() {
  * Serves the main HTML page optimized for tablets
  */
 function doGet(e) {
-  const template = HtmlService.createTemplateFromFile('Index');
+  // Route to different pages based on ?page= parameter
+  const page = (e && e.parameter && e.parameter.page) || 'Index';
+  const validPages = ['Index', 'LabelGenerator'];
+  const pageName = validPages.includes(page) ? page : 'Index';
+
+  const template = HtmlService.createTemplateFromFile(pageName);
   return template.evaluate()
     .setTitle('Cannabis Packaging Inventory')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
@@ -1147,6 +1152,154 @@ function include(filename) {
 function generateSessionId() {
   return generateId('SES');
 }
+
+// =============================================================================
+// SECTION K: QR LABEL GENERATION & SERIAL MANAGEMENT
+// =============================================================================
+
+/**
+ * Get all SKUs for the label generator UI
+ * @returns {Object[]} Array of SKU objects
+ */
+function getAllSKUs() {
+  return getData(CONFIG.SHEETS.SKU_METADATA);
+}
+
+/**
+ * Generate unique serial codes for labels and register them in the database.
+ * Each serial is globally unique and tied to a specific SKU.
+ *
+ * Serial format: {SKU_ID}:{5-digit-sequence}-{4-hex-random}
+ * Example: HC-34-15-I:00001-a7f2
+ *
+ * The serial encodes:
+ *   - The SKU identity (so scanning resolves the product)
+ *   - A unique suffix (so no two physical labels share a code)
+ *
+ * @param {string} skuId - The SKU to generate labels for
+ * @param {number} quantity - How many unique labels to generate
+ * @returns {Object[]} Array of { serialCode, skuId, sequenceNumber }
+ */
+function generateLabelSerials(skuId, quantity) {
+  const sku = lookupSKUById(skuId);
+  if (!sku) throw new Error(`SKU "${skuId}" not found`);
+
+  quantity = Math.min(Math.max(1, Number(quantity) || 1), 5000);
+
+  // Find the highest existing sequence number for this SKU
+  const existingLogs = getData(CONFIG.SHEETS.SCAN_LOGS);
+  let maxSeq = 0;
+  const prefix = skuId + ':';
+
+  existingLogs.forEach(log => {
+    const bc = String(log.barcode_scanned || '');
+    if (bc.startsWith(prefix)) {
+      const seqPart = bc.substring(prefix.length).split('-')[0];
+      const seq = parseInt(seqPart, 10);
+      if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+    }
+  });
+
+  // Also check previously generated labels (in case they haven't been scanned yet)
+  // We store generated serials in a dedicated sheet or in Scan_Logs with type LABEL_GENERATED
+  const labelLogs = existingLogs.filter(log => log.scan_type === 'LABEL_GENERATED');
+  labelLogs.forEach(log => {
+    const bc = String(log.barcode_scanned || '');
+    if (bc.startsWith(prefix)) {
+      const seqPart = bc.substring(prefix.length).split('-')[0];
+      const seq = parseInt(seqPart, 10);
+      if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+    }
+  });
+
+  const serials = [];
+  const now = new Date().toISOString();
+  const batchId = generateId('LBL');
+
+  for (let i = 0; i < quantity; i++) {
+    const seq = maxSeq + i + 1;
+    const seqStr = String(seq).padStart(5, '0');
+    const rand = Math.random().toString(16).substring(2, 6);
+    const serialCode = `${skuId}:${seqStr}-${rand}`;
+
+    serials.push({
+      serialCode: serialCode,
+      skuId: skuId,
+      sequenceNumber: seq
+    });
+
+    // Register each serial in Scan_Logs so it's trackable
+    setData(CONFIG.SHEETS.SCAN_LOGS, {
+      scan_timestamp: now,
+      barcode_scanned: serialCode,
+      sku_id: skuId,
+      scan_type: 'LABEL_GENERATED',
+      quantity: 1,
+      case_status: 'N/A',
+      operator_id: 'SYSTEM',
+      session_id: batchId,
+      status: 'PENDING',
+      notes: `Label generated in batch ${batchId}`
+    });
+  }
+
+  // Audit trail for the batch
+  writeAuditEntry({
+    operator_id: 'SYSTEM',
+    action: 'CREATE',
+    target_sheet: CONFIG.SHEETS.SCAN_LOGS,
+    target_row_id: batchId,
+    new_value: `Generated ${quantity} labels for ${skuId} (seq ${maxSeq + 1}-${maxSeq + quantity})`,
+    notes: `Label batch: ${batchId}`
+  });
+
+  return serials;
+}
+
+/**
+ * Resolve a scanned serial code back to its SKU.
+ * Handles both plain SKU barcodes and serial-encoded QR codes.
+ * @param {string} scannedValue - The raw value from the scanner
+ * @returns {Object|null} { skuId, serialCode, isUniqueSeral }
+ */
+function resolveScannedCode(scannedValue) {
+  // Check if it's a serial-encoded QR (contains ':')
+  if (scannedValue.includes(':')) {
+    const skuId = scannedValue.split(':')[0];
+    const sku = lookupSKUById(skuId);
+    if (sku) {
+      return { skuId: skuId, serialCode: scannedValue, isUniqueSerial: true, sku: sku };
+    }
+  }
+
+  // Fall back to plain barcode lookup
+  const sku = lookupSKUByBarcode(scannedValue);
+  if (sku) {
+    return { skuId: sku.sku_id, serialCode: scannedValue, isUniqueSerial: false, sku: sku };
+  }
+
+  return null;
+}
+
+/**
+ * Check if a specific serial code has already been used (scanned for intake/count)
+ * @param {string} serialCode
+ * @returns {Object} { isUsed, transaction }
+ */
+function checkSerialUsed(serialCode) {
+  const logs = getData(CONFIG.SHEETS.SCAN_LOGS);
+  const usedTxn = logs.find(log =>
+    String(log.barcode_scanned) === String(serialCode) &&
+    log.status === 'ACCEPTED' &&
+    log.scan_type !== 'LABEL_GENERATED'
+  );
+
+  return {
+    isUsed: !!usedTxn,
+    transaction: usedTxn || null
+  };
+}
+
 
 /**
  * Test function — verify database connectivity
